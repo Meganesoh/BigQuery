@@ -1,538 +1,268 @@
-# Créer des tables partitionnées par date dans BigQuery
+Créer des tables partitionnées par date dans BigQuery
 
-
-
-## Présentation
-
-
+Présentation
 
 BigQuery est la base de données d'analyse NoOps, économique et entièrement gérée de Google. Avec BigQuery, vous pouvez interroger plusieurs téraoctets de données sans avoir à gérer d'infrastructure ni faire appel à un administrateur de base de données. Basé sur le langage SQL et le modèle de paiement à l'usage, BigQuery vous permet de vous concentrer sur l'analyse des données pour en dégager des informations pertinentes.
 
-
-
 Dans cet atelier, vous allez apprendre à interroger et créer des tables partitionnées dans BigQuery pour améliorer les performances des requêtes et réduire l'utilisation des ressources. Les données utilisées pour cet atelier font partie d'un ensemble de données d'e-commerce comprenant des millions d'enregistrements Google Analytics pour le Google Merchandise Store chargé dans BigQuery.
 
-
-
 Objectifs de l'atelier
-
 Dans cet atelier, vous allez apprendre à effectuer les tâches suivantes :
 
-
-
 Interroger des tables partitionnées
-
 Créer vos propres tables partitionnées
-
 Préparation
-
 Avant de cliquer sur le bouton "Démarrer l'atelier"
-
 Lisez ces instructions. Les ateliers sont minutés, et vous ne pouvez pas les mettre en pause. Le minuteur, qui démarre lorsque vous cliquez sur Démarrer l'atelier, indique combien de temps les ressources Google Cloud resteront accessibles.
-
-
 
 Cet atelier pratique vous permet de suivre les activités dans un véritable environnement cloud, et non dans un environnement de simulation ou de démonstration. Des identifiants temporaires vous sont fournis pour vous permettre de vous connecter à Google Cloud le temps de l'atelier.
 
-
-
-## Tâche 1 : Créer un ensemble de données
-
-
+Tâche 1 : Créer un ensemble de données
 
 Commencez par créer un ensemble de données dans lequel stocker vos tables.
 
-
-
 Dans le volet Explorateur, à côté de l'ID de votre projet, cliquez sur Afficher les actions, puis sur Créer un ensemble de données.
 
-
-
-Option \&quot;Créer un ensemble de données\&quot; mise en évidence dans le menu déroulant du projet.
-
-
+Option &quot;Créer un ensemble de données&quot; mise en évidence dans le menu déroulant du projet.
 
 Définissez le champ ID de l'ensemble de données sur e-commerce.
-
 Laissez les valeurs par défaut des autres options, "Emplacement des données" et "Expiration de la table par défaut".
 
-
-
 Cliquez sur Créer un ensemble de données.
-
 Cliquez sur Vérifier ma progression pour valider l'objectif.
 
-
-
 Assessment Completed!
-
 Créer un ensemble de données nommé "e-commerce"
-
 Assessment Completed!
-
-## Tâche 2 : Créer des tables partitionnées par date
-
-
+Tâche 2 : Créer des tables partitionnées par date
 
 Une table partitionnée est une table divisée en segments, appelés partitions, qui facilitent la gestion et l'interrogation des données. Diviser une grande table en partitions plus petites permet d'améliorer les performances des requêtes et de maîtriser les coûts en réduisant le nombre d'octets traités par une requête.
 
-
-
 Vous allez maintenant créer une table et lui associer une colonne de date ou de code temporel en tant que partition. Auparavant, examinons les données de la table non partitionnée.
 
-
-
 Interroger des données analytiques de page Web pour un échantillon de visiteurs en 2017
-
 Cliquez sur + Requête SQL et ajoutez la requête suivante :
-
-\#standardSQL
-
+#standardSQL
 SELECT DISTINCT
-
-&nbsp; fullVisitorId,
-
-&nbsp; date,
-
-&nbsp; city,
-
-&nbsp; pageTitle
-
-FROM `data-to-insights.ecommerce.all\_sessions\_raw`
-
+  fullVisitorId,
+  date,
+  city,
+  pageTitle
+FROM `data-to-insights.ecommerce.all_sessions_raw`
 WHERE date = '20170708'
-
 LIMIT 5
-
 Copié
-
 Avant de l'exécuter, notez la quantité totale de données à traiter, comme indiqué à côté de l'icône de l'outil de validation des requêtes : "Cette requête traitera 1,74 Go lors de son exécution".
 
-
-
 Cliquez sur Exécuter.
-
 La requête renvoie cinq résultats.
 
-
-
 Interroger des données analytiques de page Web pour un échantillon de visiteurs en 2018
-
 Modifions à présent la requête pour qu'elle s'intéresse aux visiteurs en 2018.
 
-
-
 Cliquez sur + Requête SQL pour vider l'éditeur de requête, puis ajoutez cette nouvelle requête. Notez que le paramètre WHERE date (Où la date) est remplacé par 20180708 :
-
-\#standardSQL
-
+#standardSQL
 SELECT DISTINCT
-
-&nbsp; fullVisitorId,
-
-&nbsp; date,
-
-&nbsp; city,
-
-&nbsp; pageTitle
-
-FROM `data-to-insights.ecommerce.all\_sessions\_raw`
-
+  fullVisitorId,
+  date,
+  city,
+  pageTitle
+FROM `data-to-insights.ecommerce.all_sessions_raw`
 WHERE date = '20180708'
-
 LIMIT 5
-
 Copié
-
 L'outil de validation des requêtes vous indique la quantité de données qui sera traitée par cette requête.
 
-
-
 Cliquez sur Exécuter.
-
 Notez que la requête traite toujours 1,74 Go de données, même si elle ne renvoie aucun résultat. Pourquoi ? Le moteur de requêtes doit analyser tous les enregistrements de l'ensemble de données pour vérifier s'ils respectent la condition de correspondance de date dans la clause WHERE. Il doit examiner chaque enregistrement afin de comparer sa date à la condition "20180708".
-
-
 
 De plus, contrairement à l'idée reçue, la clause LIMIT 5 (Limite 5) ne réduit pas la quantité totale de données traitée.
 
 
-
-
-
 Why did the previous query return 0 records but still scan through 1.74GB of data?
-
 The query was written incorrectly
-
 The query engine has the metadata for each partition stored but still needs to scan all records even if the table is partitioned.
-
 check
-
 Before the query runs, the query engine does not know whether 2018 data exists to satisfy the WHERE clause condition and it needs to scan through all records in a non-partitioned table.
 
-
-
 Cas d'utilisation courants des tables partitionnées par date
-
 L'analyse systématique de l'ensemble de données complet afin de comparer les lignes à une condition WHERE est inefficace, surtout si seuls les enregistrements concernant une période spécifique vous intéressent, par exemple :
 
-
-
 toutes les transactions de l'année passée ;
-
 toutes les interactions des visiteurs au cours des sept derniers jours ;
-
 tous les produits vendus au cours du mois écoulé.
-
 Au lieu d'analyser l'ensemble de données complet et de le filtrer selon un champ de date comme pour les requêtes précédentes, configurez à présent une table partitionnée par date. Cela vous permet d'ignorer complètement les enregistrements de certaines partitions s'ils sont sans rapport avec la requête.
 
-
-
 Créer une table partitionnée en fonction de la date
-
 Cliquez sur + Requête SQL, ajoutez la requête ci-dessous, puis cliquez sur Exécuter :
+#standardSQL
+ CREATE OR REPLACE TABLE ecommerce.partition_by_day
+ PARTITION BY date_formatted
+ OPTIONS(
+   description="a table partitioned by date"
+ ) AS
 
-\#standardSQL
-
-&nbsp;CREATE OR REPLACE TABLE ecommerce.partition\_by\_day
-
-&nbsp;PARTITION BY date\_formatted
-
-&nbsp;OPTIONS(
-
-&nbsp;  description="a table partitioned by date"
-
-&nbsp;) AS
-
-
-
-&nbsp;SELECT DISTINCT
-
-&nbsp;PARSE\_DATE("%Y%m%d", date) AS date\_formatted,
-
-&nbsp;fullvisitorId
-
-&nbsp;FROM `data-to-insights.ecommerce.all\_sessions\_raw`
-
+ SELECT DISTINCT
+ PARSE_DATE("%Y%m%d", date) AS date_formatted,
+ fullvisitorId
+ FROM `data-to-insights.ecommerce.all_sessions_raw`
 Copié
+Dans cette requête, notez la nouvelle option PARTITION BY (Partitionner par) suivie d'un champ. Les deux options de partition disponibles sont DATE et TIMESTAMP (Code temporel). La fonction PARSE_DATE (Analyser la date) est utilisée pour le champ de date (stocké en tant que chaîne) afin de l'associer au type de DATE correct en vue du partitionnement.
 
-Dans cette requête, notez la nouvelle option PARTITION BY (Partitionner par) suivie d'un champ. Les deux options de partition disponibles sont DATE et TIMESTAMP (Code temporel). La fonction PARSE\_DATE (Analyser la date) est utilisée pour le champ de date (stocké en tant que chaîne) afin de l'associer au type de DATE correct en vue du partitionnement.
-
-
-
-Cliquez sur l'ensemble de données e-commerce, puis sélectionnez la nouvelle table partition\_by\_day (partition par jour) :
-
-Option de table partition\_by\_day mise en surbrillance
-
-
+Cliquez sur l'ensemble de données e-commerce, puis sélectionnez la nouvelle table partition_by_day (partition par jour) :
+Option de table partition_by_day mise en surbrillance
 
 Cliquez sur l'onglet Détails.
-
 Vérifiez que les données suivantes apparaissent :
 
-
-
 Partitionnée par : jour
-
-Partitionnement le : date\_formatted
-
-Détails de partition\_by\_day (partition par jour)
-
-
+Partitionnement le : date_formatted
+Détails de partition_by_day (partition par jour)
 
 Remarque : Les partitions au sein des tables partitionnées liées à votre compte d'atelier expireront automatiquement au bout de 60 jours à compter de la valeur indiquée dans votre colonne de date. Les tables partitionnées que vous créerez dans votre compte Google Cloud personnel avec facturation activée n'expireront pas. Dans le cadre de cet atelier, les requêtes restantes seront exécutées sur des tables partitionnées qui ont déjà été créées.
-
 Cliquez sur Vérifier ma progression pour valider l'objectif.
 
-
-
 Assessment Completed!
-
 Créer une table partitionnée en fonction de la date
-
 Assessment Completed!
-
-## Tâche 3 : Examiner les résultats de requêtes sur une table partitionnée
-
-
+Tâche 3 : Examiner les résultats de requêtes sur une table partitionnée
 
 Exécutez la requête suivante, et notez la quantité totale d'octets à traiter :
-
-\#standardSQL
-
-SELECT \*
-
-FROM `data-to-insights.ecommerce.partition\_by\_day`
-
-WHERE date\_formatted = '2016-08-01'
-
+#standardSQL
+SELECT *
+FROM `data-to-insights.ecommerce.partition_by_day`
+WHERE date_formatted = '2016-08-01'
 Copié
-
 Cette fois, 25 ko ou 0,025 Mo sont traités, ce qui représente une petite fraction de la quantité de données analysée par la requête précédente.
 
-
-
 À présent, exécutez la requête suivante, et notez la quantité totale d'octets à traiter :
-
-\#standardSQL
-
-SELECT \*
-
-FROM `data-to-insights.ecommerce.partition\_by\_day`
-
-WHERE date\_formatted = '2018-07-08'
-
+#standardSQL
+SELECT *
+FROM `data-to-insights.ecommerce.partition_by_day`
+WHERE date_formatted = '2018-07-08'
 Copié
-
 Le message suivant doit s'afficher : Cette requête traitera 0 octet lors de son exécution.
 
 
-
-
-
 Why was there 0 bytes processed?
-
 The query is running from query cache
-
 check
-
 The query engine knows which date partitions exist before the query is ran (and there is no 2018 partitions)
-
 The query is running from a saved View
 
-
-
-## Tâche 4 : Créer une table partitionnée à expiration automatique
-
-
+Tâche 4 : Créer une table partitionnée à expiration automatique
 
 Les tables partitionnées à expiration automatique sont utilisées pour assurer la conformité avec les règles de confidentialité des données. Elles permettent aussi d'éviter tout stockage superflu (facturé dans un environnement de production). Si vous souhaitez créer une période glissante de données, ajoutez une date d'expiration pour que la partition disparaisse une fois que vous avez fini de l'utiliser.
 
-
-
 Explorer les tables de données météorologiques mises à disposition par l'Agence américaine NOAA
-
 Dans le menu de gauche, sous "Explorateur", cliquez sur + Ajouter des données et sélectionnez Ensembles de données publics.
-
-Menu d\&#39;ajout de données avec les options Explorer les ensembles de données publics, Épingler un projet et Source de données externe.
-
-
+Menu d&#39;ajout de données avec les options Explorer les ensembles de données publics, Épingler un projet et Source de données externe.
 
 Recherchez GSOD NOAA, puis sélectionnez l'ensemble de données.
 
-
-
 Cliquez sur Afficher l'ensemble de données.
 
+Faites défiler les tables de l'ensemble de données noaa_gsod (elles sont segmentées manuellement et non partitionnées) :
 
-
-Faites défiler les tables de l'ensemble de données noaa\_gsod (elles sont segmentées manuellement et non partitionnées) :
-
-
-
-Ensemble de données \&quot;noaa\_gsod\&quot; mis en évidence
-
-
+Ensemble de données &quot;noaa_gsod&quot; mis en évidence
 
 L'objectif est de créer une table qui :
 
-
-
 interroge les données météorologiques à partir de 2018 ;
-
 filtre les données pour n'inclure que les jours avec des précipitations (pluie, neige, etc.) ;
-
 stocke chaque partition de données pendant 90 jours uniquement, à compter de sa date de création (période glissante).
-
 Tout d'abord, copiez et collez la requête ci-dessous :
-
-\#standardSQL
-
-&nbsp;SELECT
-
-&nbsp;  DATE(CAST(year AS INT64), CAST(mo AS INT64), CAST(da AS INT64)) AS date,
-
-&nbsp;  (SELECT ANY\_VALUE(name) FROM `bigquery-public-data.noaa\_gsod.stations` AS stations
-
-&nbsp;   WHERE stations.usaf = stn) AS station\_name,  -- Stations may have multiple names
-
-&nbsp;  prcp
-
-&nbsp;FROM `bigquery-public-data.noaa\_gsod.gsod\*` AS weather
-
-&nbsp;WHERE prcp < 99.9  -- Filter unknown values
-
-&nbsp;  AND prcp > 0      -- Filter stations/days with no precipitation
-
-&nbsp;  AND \_TABLE\_SUFFIX >= '2018'
-
-&nbsp;ORDER BY date DESC -- Where has it rained/snowed recently
-
-&nbsp;LIMIT 10
-
+#standardSQL
+ SELECT
+   DATE(CAST(year AS INT64), CAST(mo AS INT64), CAST(da AS INT64)) AS date,
+   (SELECT ANY_VALUE(name) FROM `bigquery-public-data.noaa_gsod.stations` AS stations
+    WHERE stations.usaf = stn) AS station_name,  -- Stations may have multiple names
+   prcp
+ FROM `bigquery-public-data.noaa_gsod.gsod*` AS weather
+ WHERE prcp < 99.9  -- Filter unknown values
+   AND prcp > 0      -- Filter stations/days with no precipitation
+   AND _TABLE_SUFFIX >= '2018'
+ ORDER BY date DESC -- Where has it rained/snowed recently
+ LIMIT 10
 Copié
-
-Remarque : Le caractère générique de table "\*" est utilisé dans la clause FROM (À partir de) pour limiter la quantité de tables traitées par le filtre TABLE\_SUFFIX (Suffixe de table).
-
+Remarque : Le caractère générique de table "*" est utilisé dans la clause FROM (À partir de) pour limiter la quantité de tables traitées par le filtre TABLE_SUFFIX (Suffixe de table).
 Remarque : Bien qu'une clause LIMIT 10 ait été ajoutée, la quantité totale de données analysées reste la même (environ 1,83 Go) étant donné qu'aucune partition n'a encore été créée.
-
 Cliquez sur Exécuter.
-
-
 
 Vérifiez que le format de date est correct et que le champ des précipitations indique des valeurs non nulles.
 
-
-
-## Tâche 5 : À vous de créer une table partitionnée
-
-
+Tâche 5 : À vous de créer une table partitionnée
 
 Modifiez la requête précédente afin de créer une table correspondant aux spécifications ci-dessous :
 
-
-
-Nom de la table : ecommerce.days\_with\_rain
-
+Nom de la table : ecommerce.days_with_rain
 Utilisez le champ de date comme clause PARTITION BY
-
-Pour OPTIONS, spécifiez partition\_expiration\_days = 60
-
+Pour OPTIONS, spécifiez partition_expiration_days = 60
 Ajoutez la description de la table = "weather stations with precipitation, partitioned by day"
-
 Votre requête doit se présenter comme suit :
 
+#standardSQL
+ CREATE OR REPLACE TABLE ecommerce.days_with_rain
+ PARTITION BY date
+ OPTIONS (
+   partition_expiration_days=60,
+   description="weather stations with precipitation, partitioned by day"
+ ) AS
 
 
-\#standardSQL
-
-&nbsp;CREATE OR REPLACE TABLE ecommerce.days\_with\_rain
-
-&nbsp;PARTITION BY date
-
-&nbsp;OPTIONS (
-
-&nbsp;  partition\_expiration\_days=60,
-
-&nbsp;  description="weather stations with precipitation, partitioned by day"
-
-&nbsp;) AS
-
-
-
-
-
-&nbsp;SELECT
-
-&nbsp;  DATE(CAST(year AS INT64), CAST(mo AS INT64), CAST(da AS INT64)) AS date,
-
-&nbsp;  (SELECT ANY\_VALUE(name) FROM `bigquery-public-data.noaa\_gsod.stations` AS stations
-
-&nbsp;   WHERE stations.usaf = stn) AS station\_name,  -- Stations may have multiple names
-
-&nbsp;  prcp
-
-&nbsp;FROM `bigquery-public-data.noaa\_gsod.gsod\*` AS weather
-
-&nbsp;WHERE prcp < 99.9  -- Filter unknown values
-
-&nbsp;  AND prcp > 0      -- Filter
-
-&nbsp;  AND \_TABLE\_SUFFIX >= '2018'
-
+ SELECT
+   DATE(CAST(year AS INT64), CAST(mo AS INT64), CAST(da AS INT64)) AS date,
+   (SELECT ANY_VALUE(name) FROM `bigquery-public-data.noaa_gsod.stations` AS stations
+    WHERE stations.usaf = stn) AS station_name,  -- Stations may have multiple names
+   prcp
+ FROM `bigquery-public-data.noaa_gsod.gsod*` AS weather
+ WHERE prcp < 99.9  -- Filter unknown values
+   AND prcp > 0      -- Filter
+   AND _TABLE_SUFFIX >= '2018'
 Copié
-
 Cliquez sur Vérifier ma progression pour valider l'objectif.
 
-
-
 Assessment Completed!
-
 À vous de créer une table partitionnée
-
 Assessment Completed!
-
 Vérifier que l'expiration de la partition de données fonctionne
-
-Pour vérifier que vous ne stockez que des données datant de 60 jours ou moins, exécutez la requête DATE\_DIFF pour obtenir l'âge de vos partitions, qui sont configurées pour expirer au bout de 60 jours.
-
-
+Pour vérifier que vous ne stockez que des données datant de 60 jours ou moins, exécutez la requête DATE_DIFF pour obtenir l'âge de vos partitions, qui sont configurées pour expirer au bout de 60 jours.
 
 Voici une requête qui enregistre les précipitations moyennes pour la station météorologique de la NOAA à Wakayama, au Japon, connue pour ses précipitations abondantes.
 
-
-
 Ajoutez cette requête, puis exécutez-la :
-
-\#standardSQL
-
-\# avg monthly precipitation
-
+#standardSQL
+# avg monthly precipitation
 SELECT
-
-&nbsp; AVG(prcp) AS average,
-
-&nbsp; station\_name,
-
-&nbsp; date,
-
-&nbsp; CURRENT\_DATE() AS today,
-
-&nbsp; DATE\_DIFF(CURRENT\_DATE(), date, DAY) AS partition\_age,
-
-&nbsp; EXTRACT(MONTH FROM date) AS month
-
-FROM ecommerce.days\_with\_rain
-
-WHERE station\_name = 'WAKAYAMA' #Japan
-
-GROUP BY station\_name, date, today, month, partition\_age
-
+  AVG(prcp) AS average,
+  station_name,
+  date,
+  CURRENT_DATE() AS today,
+  DATE_DIFF(CURRENT_DATE(), date, DAY) AS partition_age,
+  EXTRACT(MONTH FROM date) AS month
+FROM ecommerce.days_with_rain
+WHERE station_name = 'WAKAYAMA' #Japan
+GROUP BY station_name, date, today, month, partition_age
 ORDER BY date DESC; # most recent days first
-
 Copié
-
-## Tâche 6 : Vérifier que la partition la plus ancienne (partition\_age) date de 60 jours ou moins
-
-
+Tâche 6 : Vérifier que la partition la plus ancienne (partition_age) date de 60 jours ou moins
 
 Mettez à jour la clause ORDER BY (Classer par) pour afficher les partitions les plus anciennes en premier.
 
-
-
 Ajoutez cette requête, puis exécutez-la :
-
-\#standardSQL
-
-\# avg monthly precipitation
-
-
+#standardSQL
+# avg monthly precipitation
 
 SELECT
-
-&nbsp; AVG(prcp) AS average,
-
-&nbsp; station\_name,
-
-&nbsp; date,
-
-&nbsp; CURRENT\_DATE() AS today,
-
-&nbsp; DATE\_DIFF(CURRENT\_DATE(), date, DAY) AS partition\_age,
-
-&nbsp; EXTRACT(MONTH FROM date) AS month
-
-FROM ecommerce.days\_with\_rain
-
-WHERE station\_name = 'WAKAYAMA' #Japan
-
-GROUP BY station\_name, date, today, month, partition\_age
-
-ORDER BY partition\_age DESC
-
+  AVG(prcp) AS average,
+  station_name,
+  date,
+  CURRENT_DATE() AS today,
+  DATE_DIFF(CURRENT_DATE(), date, DAY) AS partition_age,
+  EXTRACT(MONTH FROM date) AS month
+FROM ecommerce.days_with_rain
+WHERE station_name = 'WAKAYAMA' #Japan
+GROUP BY station_name, date, today, month, partition_age
+ORDER BY partition_age DESC
 Copié
-
 Remarque : Vos résultats varieront si vous réexécutez la requête ultérieurement, puisque les données météorologiques, ainsi que vos partitions, sont mises à jour en permanence.
-
-
-
